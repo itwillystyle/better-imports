@@ -207,6 +207,7 @@ gui.Name = "BetterImports"
 
 local root = Instance.new("Frame")
 root.Size = UDim2.fromScale(1, 1)
+root.Name = "Root"
 root.BackgroundColor3 = INK
 root.BorderSizePixel = 0
 root.Parent = gui
@@ -225,20 +226,22 @@ layout.Parent = root
 
 -- scope row -------------------------------------------------------------
 local scopeRow = Instance.new("Frame")
+scopeRow.Name = "ScopeRow"
 scopeRow.BackgroundTransparency = 1
 scopeRow.Size = UDim2.new(1, 0, 0, 30)
 scopeRow.LayoutOrder = 1
 scopeRow.Parent = root
 
-local scanSel = button(scopeRow, "Scan selection", PANEL, { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.fromScale(0, 0) })
-local scanAll = button(scopeRow, "Scan Workspace", PANEL, { Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new(0.5, 4, 0, 0) })
+local scanSel = button(scopeRow, "Scan selection", PANEL, { Name = "ScanSelection", Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.fromScale(0, 0) })
+local scanAll = button(scopeRow, "Scan Workspace", PANEL, { Name = "ScanWorkspace", Size = UDim2.new(0.5, -4, 1, 0), Position = UDim2.new(0.5, 4, 0, 0) })
 
 local summary = label(root, "Scan to begin.", 12, MUTED, {
-	Size = UDim2.new(1, 0, 0, 16), LayoutOrder = 2, TextWrapped = true,
+	Name = "Summary", Size = UDim2.new(1, 0, 0, 16), LayoutOrder = 2, TextWrapped = true,
 })
 
 -- findings list ---------------------------------------------------------
 local list = Instance.new("ScrollingFrame")
+list.Name = "Findings"
 list.Size = UDim2.new(1, 0, 1, -186)
 list.BackgroundColor3 = PANEL
 list.BorderSizePixel = 0
@@ -271,6 +274,7 @@ scaleRow.Parent = root
 label(scaleRow, "Scale to height (studs)", 12, MUTED, { Size = UDim2.new(0.62, 0, 1, 0) })
 
 local heightBox = Instance.new("TextBox")
+heightBox.Name = "Height"
 heightBox.Size = UDim2.new(0.38, 0, 1, 0)
 heightBox.Position = UDim2.fromScale(0.62, 0)
 heightBox.BackgroundColor3 = PANEL
@@ -292,7 +296,7 @@ moveRow.LayoutOrder = 5
 moveRow.Parent = root
 
 local moveTo = "none"
-local moveBtn = button(moveRow, "Leave in Workspace", PANEL, { Size = UDim2.new(1, 0, 1, 0), TextSize = 12 })
+local moveBtn = button(moveRow, "Leave in Workspace", PANEL, { Name = "MoveTarget", Size = UDim2.new(1, 0, 1, 0), TextSize = 12 })
 local MOVE_ORDER = { "none", "ReplicatedStorage", "ServerStorage" }
 local MOVE_TEXT = {
 	none = "Leave in Workspace",
@@ -307,11 +311,11 @@ moveBtn.MouseButton1Click:Connect(function()
 end)
 
 local fixBtn = button(root, "Fix selected problems", ACCENT, {
-	Size = UDim2.new(1, 0, 0, 36), LayoutOrder = 6, TextSize = 14,
+	Name = "Fix", Size = UDim2.new(1, 0, 0, 36), LayoutOrder = 6, TextSize = 14,
 })
 
 local note = label(root, "", 11, MUTED, {
-	Size = UDim2.new(1, 0, 0, 26), LayoutOrder = 7, TextWrapped = true,
+	Name = "Note", Size = UDim2.new(1, 0, 0, 26), LayoutOrder = 7, TextWrapped = true,
 })
 
 -- ============================================================ state
