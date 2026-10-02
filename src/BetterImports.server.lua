@@ -41,8 +41,29 @@ local ACCENT = Color3.fromRGB(96, 158, 232)
 -- ============================================================ the checks
 -- Each returns true when the instance HAS the problem.
 
-local function isMeshy(x)
-	return x:IsA("MeshPart") or x:IsA("UnionOperation") or x:IsA("SpecialMesh")
+-- Some parts are structure, not scenery, and turning off their collision looks
+-- like a fixed problem while actually breaking the place. A SpawnLocation you
+-- fall through and a Baseplate that is not a floor are the two obvious ones.
+-- Learned the hard way: an early build happily did both.
+local PROTECTED_NAMES = { Baseplate = true, Terrain = true, Ground = true, Floor = true }
+
+local function isProtected(x)
+	if x:IsA("Terrain") or x:IsA("SpawnLocation") or x:IsA("Seat") or x:IsA("VehicleSeat") then return true end
+	if PROTECTED_NAMES[x.Name] then return true end
+	-- NO size heuristic here. "Big part = floor" is exactly backwards for an import
+	-- tool: a fresh Quaternius building is 1,700 studs and a Kenney car body is 150.
+	-- An early version of this guard refused to fix 135 of 233 real meshes because
+	-- of that rule. Hand-made floors are primitive Parts, and the scenery fixes are
+	-- already scoped to MeshParts, so the rule earned nothing anyway.
+	if x:FindFirstAncestorOfClass("Model") and x:FindFirstAncestorOfClass("Model"):FindFirstChildOfClass("Humanoid") then return true end
+	return false
+end
+
+-- The scenery fixes only ever apply to actual imported geometry. A primitive
+-- Part you placed by hand is not an import and this tool has no business
+-- deciding whether it should collide.
+local function isImport(x)
+	return (x:IsA("MeshPart") or x:IsA("UnionOperation")) and not isProtected(x)
 end
 
 local CHECKS = {
@@ -51,7 +72,7 @@ local CHECKS = {
 		label = "Unanchored",
 		detail = "Falls on Play and takes the physics solver with it",
 		on = true,
-		test = function(x) return x:IsA("BasePart") and not x.Anchored end,
+		test = function(x) return x:IsA("BasePart") and not x.Anchored and not isProtected(x) end,
 		fix = function(x) x.Anchored = true end,
 	},
 	{
@@ -77,26 +98,26 @@ local CHECKS = {
 	},
 	{
 		key = "collide",
-		label = "Collidable scenery",
+		label = "Collidable imported mesh",
 		detail = "Props the player should never snag on",
 		on = false,
-		test = function(x) return x:IsA("BasePart") and x.CanCollide end,
+		test = function(x) return isImport(x) and x.CanCollide end,
 		fix = function(x) x.CanCollide = false end,
 	},
 	{
 		key = "query",
-		label = "CanQuery on",
+		label = "CanQuery on (imports)",
 		detail = "Raycasts and the camera popper hit invisible scenery",
 		on = false,
-		test = function(x) return x:IsA("BasePart") and x.CanQuery end,
+		test = function(x) return isImport(x) and x.CanQuery end,
 		fix = function(x) x.CanQuery = false; x.CanTouch = false end,
 	},
 	{
 		key = "shadow",
-		label = "Casting shadows",
+		label = "Imports casting shadows",
 		detail = "The biggest avoidable render cost on a phone",
 		on = false,
-		test = function(x) return x:IsA("BasePart") and x.CastShadow end,
+		test = function(x) return isImport(x) and x.CastShadow end,
 		fix = function(x) x.CastShadow = false end,
 	},
 	{
@@ -105,7 +126,7 @@ local CHECKS = {
 		detail = "A full mesh collider for something nobody touches",
 		on = false,
 		test = function(x)
-			return x:IsA("MeshPart") and x.CollisionFidelity ~= Enum.CollisionFidelity.Box
+			return isImport(x) and x:IsA("MeshPart") and x.CollisionFidelity ~= Enum.CollisionFidelity.Box
 		end,
 		fix = function(x) x.CollisionFidelity = Enum.CollisionFidelity.Box end,
 	},
@@ -148,7 +169,12 @@ local function scan(roots)
 		if r.Parent == workspace then table.insert(loose, r) end
 	end
 
-	return found, loose, #parts, #models
+	local guarded = 0
+	for _, x in ipairs(all) do
+		if x:IsA("BasePart") and isProtected(x) then guarded += 1 end
+	end
+
+	return found, loose, #parts, #models, guarded
 end
 
 -- ============================================================ ui helpers
@@ -401,8 +427,8 @@ local function doScan(useSelection)
 		roots = workspace:GetChildren()
 	end
 
-	local parts, models
-	found, loose, parts, models = scan(roots)
+	local parts, models, guarded
+	found, loose, parts, models, guarded = scan(roots)
 
 	local total = 0
 	for _, c in ipairs(CHECKS) do total += #(found[c.key] or {}) end
@@ -412,7 +438,10 @@ local function doScan(useSelection)
 		total, total == 1 and "" or "s")
 	summary.TextColor3 = total > 0 and WARN or GOOD
 	render()
-	setNote(total == 0 and "Nothing to fix." or "Tick what you want changed, then Fix.")
+	local guardNote = guarded > 0
+		and string.format(" %d structural part%s left alone (spawns, floors, seats).", guarded, guarded == 1 and "" or "s")
+		or ""
+	setNote((total == 0 and "Nothing to fix." or "Tick what you want changed, then Fix.") .. guardNote)
 end
 
 scanSel.MouseButton1Click:Connect(function() doScan(true) end)

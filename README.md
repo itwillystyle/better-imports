@@ -71,6 +71,27 @@ model:ScaleTo(model:GetScale() * (34 / size.Y))
 
 not `model:ScaleTo(34 / size.Y)`.
 
+## What it refuses to touch
+
+The scenery fixes (collision, query, shadows, fidelity) only ever apply to **imported
+geometry** - MeshParts and Unions. A primitive Part you placed by hand is not an import,
+and this tool has no business deciding whether it should collide.
+
+On top of that, these are never touched at all:
+
+- `Terrain`, any `SpawnLocation`, any `Seat` or `VehicleSeat`
+- anything named `Baseplate`, `Ground`, `Floor`
+- anything inside a Model with a `Humanoid` (characters and NPCs)
+
+This exists because an early build happily turned off collision on a Baseplate and a
+SpawnLocation. The counts went down and the place broke: a spawn you fall through is not
+a fixed problem. The scan reports how many structural parts it left alone, so the guard
+is visible rather than silent.
+
+**It does NOT use a size heuristic.** "Anything bigger than 100 studs is a floor" sounds
+reasonable and is exactly backwards here: a fresh Quaternius building is 1,700 studs and a
+Kenney car body is 150. That rule blocked 135 of 233 real meshes before it was removed.
+
 ## Safety
 
 - Every fix runs inside one `ChangeHistoryService` recording, so `Ctrl+Z` reverts the whole
