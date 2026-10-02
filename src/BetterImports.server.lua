@@ -341,6 +341,7 @@ local note = label(root, "", 11, MUTED, {
 -- ============================================================ state
 
 local roots = {}
+local lastUsedSelection = false   -- remember the scope; never infer it
 local found = {}
 local loose = {}
 local rows = {}
@@ -416,6 +417,7 @@ local function render()
 end
 
 local function doScan(useSelection)
+	lastUsedSelection = useSelection and true or false
 	roots = {}
 	if useSelection then
 		roots = Selection:Get()
@@ -469,7 +471,14 @@ local function scaleToHeight(x, target)
 		return true
 	elseif x:IsA("BasePart") then
 		if x.Size.Y <= 0 then return false end
-		x.Size = x.Size * (target / x.Size.Y)
+		local want = x.Size * (target / x.Size.Y)
+		-- Roblox clamps a part to 0.05..2048 per axis. Scaling blindly would let the
+		-- clamp change the proportions instead of the size, which looks like the tool
+		-- mangled the mesh.
+		if math.max(want.X, want.Y, want.Z) > 2048 or math.min(want.X, want.Y, want.Z) < 0.05 then
+			return false
+		end
+		x.Size = want
 		return true
 	end
 	return false
@@ -543,7 +552,10 @@ fixBtn.MouseButton1Click:Connect(function()
 			.. "   Ctrl+Z undoes all of it.", GOOD)
 	end
 
-	doScan(#roots > 0 and roots[1] ~= workspace:GetChildren()[1])
+	-- Re-scan the SAME scope. This used to infer it by comparing roots[1] to
+	-- workspace:GetChildren()[1], which flipped to the wrong scope the moment a
+	-- fix moved things out of Workspace (and misfired on an empty Workspace).
+	doScan(lastUsedSelection)
 end)
 
 btn.Click:Connect(function()
